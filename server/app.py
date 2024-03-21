@@ -1,4 +1,5 @@
-#!/usr/bin/env python3
+# #!/usr/bin/env python3
+
 
 from flask import Flask, make_response, jsonify, request, session
 from flask_migrate import Migrate
@@ -18,6 +19,24 @@ db.init_app(app)
 
 api = Api(app)
 
+
+# Checks if the user is logged in. Gives error if not of a 401 Unauthorized error.
+# If an user is not signed in there is an error message
+@app.before_request
+def check_if_logged_in():
+    open_access_list = [
+        'clear',
+        'article_list',
+        'show_article',
+        'login',
+        'logout',
+        'check_session'
+    ]
+
+    if (request.endpoint) not in open_access_list and (not session.get('user_id')):
+        return {'error': '401 Unauthorized'}, 401
+    
+    
 class ClearSession(Resource):
 
     def delete(self):
@@ -26,12 +45,14 @@ class ClearSession(Resource):
         session['user_id'] = None
 
         return {}, 204
+    
 
 class IndexArticle(Resource):
     
     def get(self):
         articles = [article.to_dict() for article in Article.query.all()]
         return make_response(jsonify(articles), 200)
+    
 
 class ShowArticle(Resource):
 
@@ -51,6 +72,7 @@ class ShowArticle(Resource):
 
         return article_json, 200
 
+
 class Login(Resource):
 
     def post(self):
@@ -65,6 +87,7 @@ class Login(Resource):
 
         return {}, 401
 
+
 class Logout(Resource):
 
     def delete(self):
@@ -72,6 +95,7 @@ class Logout(Resource):
         session['user_id'] = None
         
         return {}, 204
+
 
 class CheckSession(Resource):
 
@@ -83,16 +107,23 @@ class CheckSession(Resource):
             return user.to_dict(), 200
         
         return {}, 401
+    
 
 class MemberOnlyIndex(Resource):
     
     def get(self):
-        pass
+    
+        articles = Article.query.filter(Article.is_member_only == True).all()
+        return [article.to_dict() for article in articles], 200
+
 
 class MemberOnlyArticle(Resource):
     
     def get(self, id):
-        pass
+
+        article = Article.query.filter(Article.id == id).first()
+        return article.to_dict(), 200
+
 
 api.add_resource(ClearSession, '/clear', endpoint='clear')
 api.add_resource(IndexArticle, '/articles', endpoint='article_list')
